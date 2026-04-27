@@ -10,27 +10,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout code from GitHub
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # 2. Copy project files to EC2
       - name: Copy files to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "."
+          source: "./*"
           target: "~/my-node-app"
 
-      - name: SSH and Restart Server
+      # 3. SSH into EC2 and setup/run app
+      - name: SSH and Deploy App
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Install Node.js if not installed
+            if ! command -v npm &> /dev/null
+            then
+              echo "Installing Node.js..."
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+
+            # Install PM2 if not installed
+            if ! command -v pm2 &> /dev/null
+            then
+              echo "Installing PM2..."
+              sudo npm install -g pm2
+            fi
+
+            # Go to project directory
             cd ~/my-node-app
-            sudo npm install -g pm2
+
+            # Install dependencies
+            npm install
+
+            # Restart app safely
             sudo pm2 delete "web-app" || true
             sudo pm2 start app.js --name "web-app"
+
+            # Save PM2 process
             sudo pm2 save
