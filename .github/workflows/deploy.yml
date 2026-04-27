@@ -30,7 +30,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/my-node-app
-            npm install
+            sudo npm install -g pm2
             sudo pm2 delete "web-app" || true
             sudo pm2 start app.js --name "web-app"
             sudo pm2 save
